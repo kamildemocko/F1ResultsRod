@@ -24,8 +24,13 @@ type Scrapper struct {
 }
 
 func new() *Scrapper {
-	controlURL := launcher.New().Headless(true).Devtools(false).MustLaunch()
-	browser := rod.New().Timeout(120 * time.Second).ControlURL(controlURL).MustConnect()
+	log.Println("starting up browser")
+
+	// LOCAL:
+	// controlURL := launcher.New().Headless(true).Devtools(false).MustLaunch()
+	// browser := rod.New().Timeout(120 * time.Second).ControlURL(controlURL).MustConnect()
+	controlURL := launcher.MustNewManaged("http://192.168.0.10:7317").MustClient()
+	browser := rod.New().Timeout(120 * time.Second).Client(controlURL).MustConnect()
 	page := browser.MustPage()
 
 	return &Scrapper{
