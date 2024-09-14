@@ -127,7 +127,7 @@ func (r *ScrResults) parseResultsTitle() (string, error) {
 }
 
 func (r *ScrResults) parseResultsTable() ([]data.ResultPlace, error) {
-	table, err := r.scrapper.page.Timeout(500 * time.Millisecond).Element("table.f1-table")
+	table, err := r.scrapper.page.Timeout(12 * time.Second).Element("table.f1-table")
 	if err != nil {
 		return nil, fmt.Errorf("timeout parsing results table")
 	}

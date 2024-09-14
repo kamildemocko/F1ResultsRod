@@ -25,10 +25,10 @@ func New(local bool, rodManagerAddr string) *Scrapper {
 
 	if local {
 		controlURL := launcher.New().Headless(true).Devtools(false).MustLaunch()
-		browser = rod.New().Timeout(120 * time.Second).ControlURL(controlURL).MustConnect()
+		browser = rod.New().Timeout(240 * time.Second).ControlURL(controlURL).MustConnect()
 	} else {
 		controlURL := launcher.MustNewManaged(rodManagerAddr).MustClient()
-		browser = rod.New().Timeout(120 * time.Second).Client(controlURL).MustConnect()
+		browser = rod.New().Timeout(240 * time.Second).Client(controlURL).MustConnect()
 	}
 	page := browser.MustPage()
 
@@ -54,7 +54,7 @@ func (s *Scrapper) SetUrl(url string) *Scrapper {
 func (s *Scrapper) Visit() *Scrapper {
 	log.Println("visting url:", s.url)
 
-	err := s.page.Timeout(30 * time.Second).Navigate(s.url)
+	err := s.page.Timeout(60 * time.Second).Navigate(s.url)
 	if err != nil {
 		panic(err)
 	}
