@@ -38,10 +38,16 @@ DSN=host=192.168.92.241 port=5432 user=postgres password=SECRET timezone=UTC con
 
 ### Remote
 
+We need a **network**:
+
+```powershell
+sudo docker network create f1-result-rod-net
+```
+
 **Rod-manager** must be running, easiest way to run it is with docker:
 
 ```Dockerfile
-docker run -p 7317:7317 ghcr.io/go-rod/rod
+docker run -p 7317:7317 --network f1-result-rod-net ghcr.io/go-rod/rod
 ```
 
 -  the IP of the server running the manager must be specified in _scrapper.go_'s **new** function
@@ -52,10 +58,10 @@ Dockerfile will build image, and leave you with image under 50MB
 docker build -t f1-results-rod .
 ```
 
-Run built image
+assuming the Postgres database is on the same network, we can run our built image:
 
 ```powershell
-docker run f1-results-rod
+docker run --network f1-result-rod-net f1-results-rod
 ```
 
 ### Local
