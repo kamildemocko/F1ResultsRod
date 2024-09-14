@@ -7,7 +7,8 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/go-rod/rod"
 )
 
 // returns table for specified year
@@ -127,9 +128,19 @@ func (r *ScrResults) parseResultsTitle() (string, error) {
 }
 
 func (r *ScrResults) parseResultsTable() ([]data.ResultPlace, error) {
-	table, err := r.scrapper.page.Timeout(12 * time.Second).Element("table.f1-table")
-	if err != nil {
-		return nil, fmt.Errorf("timeout parsing results table")
+	// table, err := r.scrapper.page.Timeout(12 * time.Second).Element("table.f1-table")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("timeout parsing results table")
+	// }
+	var table *rod.Element
+	r.scrapper.page.Race().Element("table.f1-table").MustHandle(func(e *rod.Element) {
+		table = e
+	}).ElementX("//p[text()='Results for this session aren’t available yet.']").MustHandle(func(e *rod.Element) {
+		table = nil
+	}).MustDo()
+
+	if table == nil {
+		return nil, fmt.Errorf("no table found")
 	}
 
 	log.Println("..parsing table")
