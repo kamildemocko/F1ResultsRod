@@ -36,6 +36,11 @@ DSN=host=192.168.92.241 port=5432 user=postgres password=SECRET timezone=UTC con
 
 ## Running
 
+### Flags
+
+`-localRun=true` 
+- enables local run, default is _false_
+
 ### Remote
 
 We need a **network**:
@@ -66,12 +71,8 @@ docker run --network f1-result-rod-net f1-results-rod
 
 ### Local
 
-As default is to run in Docker you must uncomment this lines (and comment coresponding lines for Docker) in _scrapper.go_'s **new** function
-```
-controlURL := launcher.New().Headless(true).Devtools(false).MustLaunch()
-browser := rod.New().Timeout(120 * time.Second).ControlURL(controlURL).MustConnect()
-```
+As default is to run app in a Docker. Use flag localRun=true to run it locally
 
 ```
-go run ./cmd/app
+go run ./cmd/app -localRun=true
 ```

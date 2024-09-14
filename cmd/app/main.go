@@ -3,6 +3,7 @@ package main
 import (
 	"f1-results-rod/data"
 	"f1-results-rod/scrapper"
+	"flag"
 	"log"
 	"os"
 	"time"
@@ -10,25 +11,35 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var thisYear = time.Now().Year()
-var DSN string
+var (
+	localRun         = flag.Bool("localRun", false, "run program locally as opposed to running it in Docker")
+	thisYear         = time.Now().Year()
+	DSN              string
+	ROD_MANAGER_ADDR string
+)
 
 type App struct {
-	scrapper *scrapper.Scrapper
+	localRun bool
+	scrpr    *scrapper.Scrapper
 	db       data.DBIntf
 }
 
 func init() {
+	flag.Parse()
 	err := godotenv.Load()
 	if err != nil {
 		panic(err)
 	}
 
 	DSN = os.Getenv("DSN")
+	ROD_MANAGER_ADDR = os.Getenv("ROD_MANAGER_ADDR")
 }
 
 func main() {
-	app := App{}
+	// set up App
+	app := App{
+		localRun: *localRun,
+	}
 
 	// init db
 	db, err := data.NewPostgresDB(DSN)
@@ -38,18 +49,19 @@ func main() {
 	defer db.Close()
 	app.db = db
 
+	// init scrapper
+	scrpr := scrapper.New(app.localRun, ROD_MANAGER_ADDR)
+	defer scrpr.Close()
+	app.scrpr = scrpr
+
 	// get already existing tracks
 	existingTracks, err := app.db.GetTracksYear(thisYear)
 	if err != nil {
 		panic(err)
 	}
 
-	// init scrapper
-	app.scrapper = scrapper.GetInstance()
-	defer app.scrapper.Close()
-
 	// get results
-	res := scrapper.NewResults(app.scrapper)
+	res := scrapper.NewResults(app.scrpr)
 	results, err := res.GetResults(thisYear, existingTracks)
 	// results, err := res.GetResultsByTrackName(thisYear, "monaco", existingTracks)
 	if err != nil {

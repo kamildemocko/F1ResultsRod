@@ -2,7 +2,6 @@ package scrapper
 
 import (
 	"log"
-	"sync"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -11,11 +10,6 @@ import (
 
 const urlBase = "https://www.formula1.com"
 
-var (
-	instance *Scrapper
-	once     sync.Once
-)
-
 type Scrapper struct {
 	Browser *rod.Browser
 	BaseUrl string
@@ -23,14 +17,19 @@ type Scrapper struct {
 	page    *rod.Page
 }
 
-func new() *Scrapper {
-	log.Println("starting up browser")
+// returns new Scrapper, needs local flag and rod manager addr, that can be empty if local
+func New(local bool, rodManagerAddr string) *Scrapper {
+	var browser *rod.Browser
 
-	// LOCAL:
-	// controlURL := launcher.New().Headless(true).Devtools(false).MustLaunch()
-	// browser := rod.New().Timeout(120 * time.Second).ControlURL(controlURL).MustConnect()
-	controlURL := launcher.MustNewManaged("http://rod-manager:7317").MustClient()
-	browser := rod.New().Timeout(120 * time.Second).Client(controlURL).MustConnect()
+	log.Println("starting up browser, local mode:", local)
+
+	if local {
+		controlURL := launcher.New().Headless(true).Devtools(false).MustLaunch()
+		browser = rod.New().Timeout(120 * time.Second).ControlURL(controlURL).MustConnect()
+	} else {
+		controlURL := launcher.MustNewManaged(rodManagerAddr).MustClient()
+		browser = rod.New().Timeout(120 * time.Second).Client(controlURL).MustConnect()
+	}
 	page := browser.MustPage()
 
 	return &Scrapper{
@@ -38,14 +37,6 @@ func new() *Scrapper {
 		BaseUrl: urlBase,
 		page:    page,
 	}
-}
-
-func GetInstance() *Scrapper {
-	once.Do(func() {
-		instance = new()
-	})
-
-	return instance
 }
 
 func (s *Scrapper) Close() {
