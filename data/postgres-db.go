@@ -2,48 +2,46 @@ package data
 
 import (
 	"context"
-	"database/sql"
 	"log"
+	"time"
 
 	_ "github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type PostgresDB struct {
-	db *sql.DB
+const connTimeout = 10 * time.Second
+
+// func NewPostgresDB(dsn string) (Repository, error) {
+// 	db, err := sql.Open("pgx", dsn)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if err = db.Ping(); err != nil {
+// 		return nil, err
+// 	}
+
+// 	db.SetMaxIdleConns(maxIdleDBConn)
+// 	db.SetMaxOpenConns(maxOpenDbConn)
+// 	db.SetConnMaxLifetime(maxDBLifetime)
+
+// 	log.Println("connected to DB")
+
+// 	pgDb := &PostgresDB{db: db}
+
+// 	err = pgDb.CreateTables()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return pgDb, nil
+// }
+
+func (p *postgresRepository) Close() error {
+	return p.DB.Close()
 }
 
-func NewPostgresDB(dsn string) (DBIntf, error) {
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = db.Ping(); err != nil {
-		return nil, err
-	}
-
-	db.SetMaxIdleConns(maxIdleDBConn)
-	db.SetMaxOpenConns(maxOpenDbConn)
-	db.SetConnMaxLifetime(maxDBLifetime)
-
-	log.Println("connected to DB")
-
-	pgDb := &PostgresDB{db: db}
-
-	err = pgDb.CreateTables()
-	if err != nil {
-		return nil, err
-	}
-
-	return pgDb, nil
-}
-
-func (p *PostgresDB) Close() error {
-	return p.db.Close()
-}
-
-func (p *PostgresDB) CreateTables() error {
+func (p *postgresRepository) CreateTables() error {
 	ctx, cancel := context.WithTimeout(context.Background(), connTimeout)
 	defer cancel()
 
@@ -71,7 +69,7 @@ func (p *PostgresDB) CreateTables() error {
 			CONSTRAINT unique_driver_track_id UNIQUE (driver, track_id)
 		);`
 
-	tx, err := p.db.Begin()
+	tx, err := p.DB.Begin()
 	if err != nil {
 		return err
 	}
@@ -93,14 +91,14 @@ func (p *PostgresDB) CreateTables() error {
 	return nil
 }
 
-func (p *PostgresDB) CountTrack(trackName string, year int) (int, error) {
+func (p *postgresRepository) CountTrack(trackName string, year int) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), connTimeout)
 	defer cancel()
 
 	query := `SELECT COUNT(*) FROM f1scrap.tracks
 	WHERE name=$1 AND year=$2;`
 
-	row := p.db.QueryRowContext(ctx, query, trackName, year)
+	row := p.DB.QueryRowContext(ctx, query, trackName, year)
 
 	var count int
 	err := row.Scan(&count)
@@ -111,14 +109,14 @@ func (p *PostgresDB) CountTrack(trackName string, year int) (int, error) {
 	return count, nil
 }
 
-func (p *PostgresDB) GetTrackID(trackName string, year int) (int64, error) {
+func (p *postgresRepository) GetTrackID(trackName string, year int) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), connTimeout)
 	defer cancel()
 
 	query := `SELECT id FROM f1scrap.tracks
 	WHERE name=$1 AND year=$2;`
 
-	row := p.db.QueryRowContext(ctx, query, trackName, year)
+	row := p.DB.QueryRowContext(ctx, query, trackName, year)
 
 	var tid int64
 	err := row.Scan(&tid)
@@ -129,13 +127,13 @@ func (p *PostgresDB) GetTrackID(trackName string, year int) (int64, error) {
 	return tid, nil
 }
 
-func (p *PostgresDB) GetTracksYear(year int) ([]Track, error) {
+func (p *postgresRepository) GetTracksYear(year int) ([]Track, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), connTimeout)
 	defer cancel()
 
 	query := `SELECT id, name, link, year FROM f1scrap.tracks WHERE year=$1`
 
-	rows, err := p.db.QueryContext(ctx, query, year)
+	rows, err := p.DB.QueryContext(ctx, query, year)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +154,7 @@ func (p *PostgresDB) GetTracksYear(year int) ([]Track, error) {
 	return tracks, nil
 }
 
-func (p *PostgresDB) InsertTrack(trackName, link string, year int) (int64, error) {
+func (p *postgresRepository) InsertTrack(trackName, link string, year int) (int64, error) {
 	log.Printf("..inserting track %s\n", trackName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), connTimeout)
@@ -167,7 +165,7 @@ func (p *PostgresDB) InsertTrack(trackName, link string, year int) (int64, error
 	RETURNING  id;`
 
 	var tid int64
-	err := p.db.QueryRowContext(ctx, query, trackName, link, year).Scan(&tid)
+	err := p.DB.QueryRowContext(ctx, query, trackName, link, year).Scan(&tid)
 	if err != nil {
 		return 0, err
 	}
@@ -175,7 +173,7 @@ func (p *PostgresDB) InsertTrack(trackName, link string, year int) (int64, error
 	return tid, nil
 }
 
-func (p *PostgresDB) InsertResultPlaces(values []ResultPlace, trackId int64) error {
+func (p *postgresRepository) InsertResultPlaces(values []ResultPlace, trackId int64) error {
 	log.Printf("inserting result place for track ID: %d\n", trackId)
 
 	ctx, cancel := context.WithTimeout(context.Background(), connTimeout)
@@ -186,7 +184,7 @@ func (p *PostgresDB) InsertResultPlaces(values []ResultPlace, trackId int64) err
 	ON CONFLICT (driver, track_id) DO UPDATE SET 
 	position=$1, driver_no=$2, driver=$3, car=$4, laps=$5, time_or_retired=$6, points=$7, track_id=$8;`
 
-	tx, err := p.db.Begin()
+	tx, err := p.DB.Begin()
 	if err != nil {
 		return err
 	}

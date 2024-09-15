@@ -12,16 +12,16 @@ import (
 )
 
 var (
-	localRun         = flag.Bool("localRun", false, "run program locally as opposed to running it in Docker")
-	thisYear         = time.Now().Year()
+	LOCAL_RUN        = flag.Bool("localRun", false, "run program locally as opposed to running it in Docker")
+	THIS_YEAR        = time.Now().Year()
 	DSN              string
 	ROD_MANAGER_ADDR string
 )
 
 type App struct {
-	localRun bool
-	scrpr    *scrapper.Scrapper
-	db       data.DBIntf
+	localRun   bool
+	scrpr      *scrapper.Scrapper
+	repository data.Repository
 }
 
 func init() {
@@ -38,16 +38,17 @@ func init() {
 func main() {
 	// set up App
 	app := App{
-		localRun: *localRun,
+		localRun: *LOCAL_RUN,
 	}
 
 	// init db
-	db, err := data.NewPostgresDB(DSN)
+	repo, err := initPostgresDB(DSN)
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
-	app.db = db
+	defer repo.Close()
+
+	app.repository = repo
 
 	// init scrapper
 	scrpr := scrapper.New(app.localRun, ROD_MANAGER_ADDR)
@@ -55,14 +56,14 @@ func main() {
 	app.scrpr = scrpr
 
 	// get already existing tracks
-	existingTracks, err := app.db.GetTracksYear(thisYear)
+	existingTracks, err := app.repository.GetTracksYear(THIS_YEAR)
 	if err != nil {
 		panic(err)
 	}
 
 	// get results
 	res := scrapper.NewResults(app.scrpr)
-	results, err := res.GetResults(thisYear, existingTracks)
+	results, err := res.GetResults(THIS_YEAR, existingTracks)
 	// results, err := res.GetResultsByTrackName(thisYear, "monaco", existingTracks)
 	if err != nil {
 		panic(err)
@@ -75,25 +76,25 @@ func main() {
 
 	// insert into db
 	for _, r := range results {
-		sameTrackCount, err := app.db.CountTrack(r.TrackName, thisYear)
+		sameTrackCount, err := app.repository.CountTrack(r.TrackName, THIS_YEAR)
 		if err != nil {
 			panic(err)
 		}
 
 		var trackID int64
 		if sameTrackCount > 0 {
-			trackID, err = app.db.GetTrackID(r.TrackName, thisYear)
+			trackID, err = app.repository.GetTrackID(r.TrackName, THIS_YEAR)
 			if err != nil {
 				panic(err)
 			}
 		} else {
-			trackID, err = app.db.InsertTrack(r.TrackName, r.Link, thisYear)
+			trackID, err = app.repository.InsertTrack(r.TrackName, r.Link, THIS_YEAR)
 			if err != nil {
 				panic(err)
 			}
 		}
 
-		err = app.db.InsertResultPlaces(r.ResultPlaces, trackID)
+		err = app.repository.InsertResultPlaces(r.ResultPlaces, trackID)
 		if err != nil {
 			panic(err)
 		}
