@@ -24,7 +24,7 @@ func (r *ScrResults) GetResults(year int, skipTracks []data.Track) ([]ScrResultI
 
 	links = utils.RemoveListMatches(links, r.convertTracksToList(skipTracks))
 
-	err = r.GetAndSetAllResultTables(links)
+	err = r.GetAndSetAllResultTables(links, year)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (r *ScrResults) GetResultsByTrackName(year int, trackName string, skipTrack
 		}
 	}
 
-	err = r.GetAndSetAllResultTables(linksTrack)
+	err = r.GetAndSetAllResultTables(linksTrack, year)
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +87,13 @@ func (r *ScrResults) GetResultRaceLinks(url string, filter string) ([]string, er
 	return racingLinks, nil
 }
 
-func (r *ScrResults) GetAndSetAllResultTables(allLinks []string) error {
+func (r *ScrResults) GetAndSetAllResultTables(allLinks []string, year int) error {
 	var results []ScrResultItem
 
 	for i, link := range allLinks {
 		r.scrapper.SetUrl(link).Visit()
 
-		title, err := r.parseResultsTitle()
+		title, err := r.parseResultsTitle(year)
 		if err != nil {
 			return err
 		}
@@ -115,7 +115,7 @@ func (r *ScrResults) GetAndSetAllResultTables(allLinks []string) error {
 	return nil
 }
 
-func (r *ScrResults) parseResultsTitle() (string, error) {
+func (r *ScrResults) parseResultsTitle(year int) (string, error) {
 	title, err := r.scrapper.page.Element("h1.f1-heading")
 	if err != nil {
 		return "", err
@@ -123,15 +123,14 @@ func (r *ScrResults) parseResultsTitle() (string, error) {
 
 	txt := title.MustText()
 	txt = strings.Replace(txt, " - RACE RESULT", "", -1)
+	txt = strings.Replace(txt, strconv.Itoa(year), "", -1)
+	txt = strings.Replace(txt, "FORMULA 1", "", -1)
+	txt = strings.Trim(txt, " ")
 
 	return txt, nil
 }
 
 func (r *ScrResults) parseResultsTable() ([]data.ResultPlace, error) {
-	// table, err := r.scrapper.page.Timeout(12 * time.Second).Element("table.f1-table")
-	// if err != nil {
-	// 	return nil, fmt.Errorf("timeout parsing results table")
-	// }
 	var table *rod.Element
 	r.scrapper.page.Race().Element("table.f1-table").MustHandle(func(e *rod.Element) {
 		table = e

@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	LOCAL_RUN        = flag.Bool("localRun", false, "run program locally as opposed to running it in Docker")
-	THIS_YEAR        = time.Now().Year()
+	LOCAL_RUN = flag.Bool("localRun", false, "run program locally as opposed to running it in Docker")
+	THIS_YEAR = time.Now().Year()
+	// THIS_YEAR        = time.Now().AddDate(-1, 0, 0).Year() //grab last year
 	DSN              string
 	ROD_MANAGER_ADDR string
 )
