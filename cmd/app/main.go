@@ -76,6 +76,10 @@ func main() {
 
 	// insert into db
 	for _, r := range results {
+		if len(r.ResultPlaces) == 0 {
+			continue
+		}
+
 		sameTrackCount, err := app.repository.CountTrack(r.TrackName, THIS_YEAR)
 		if err != nil {
 			panic(err)
